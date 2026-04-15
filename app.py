@@ -5,7 +5,7 @@ import requests
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Riset Paket Makan UIN RMS", layout="centered", page_icon="🍗")
 
-# --- 2. INITIALIZING SESSION STATE (Pagar Error) ---
+# --- 2. INITIALIZING SESSION STATE ---
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 
@@ -39,14 +39,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI KIRIM DATA KE GOOGLE FORM (VERSI DEBUG & HEADERS) ---
+# --- 4. FUNGSI KIRIM DATA (STRICT VERSION) ---
 def send_to_google_form(nama, angkatan, nim, ranking_list):
     # Endpoint formResponse
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfv9fJ-I8ilVD8DBKyrrETja-zySAiOgKu2zJACwknvgDABzw/formResponse"
     
     ranking_string = ", ".join(ranking_list)
     
-    # Payload berdasarkan entry ID yang kamu berikan
+    # Payload ID sesuai link yang kamu berikan
     payload = {
         "entry.136391246": nama,
         "entry.79359752": angkatan,
@@ -54,19 +54,23 @@ def send_to_google_form(nama, angkatan, nim, ranking_list):
         "entry.86268960": ranking_string
     }
     
-    # Headers untuk meniru browser asli agar tidak diblokir Google
+    # Headers lebih lengkap untuk meniru browser Chrome terbaru
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
     
     try:
-        response = requests.post(form_url, data=payload, headers=headers)
-        # Mengembalikan status code dan pesan sistem
+        # Menggunakan session agar lebih stabil
+        session = requests.Session()
+        response = session.post(form_url, data=payload, headers=headers, timeout=10)
         return response.status_code, response.reason
     except Exception as e:
         return 500, str(e)
 
-# --- 5. HALAMAN LOGIN (GATE) ---
+# --- 5. HALAMAN LOGIN ---
 if st.session_state.get('user_data') is None:
     st.title("🍗 Riset Preferensi Paket Makan")
     st.subheader("Data Science UIN Raden Mas Said")
@@ -92,7 +96,7 @@ else:
     st.title(f"Halo, {user['nama']}! 👋")
     st.write("Klik paket sesuai urutan **PALING DISUKAI** (Pilihan akan menghilang).")
 
-    # Progress Info
+    # Progress bar
     total = 27
     current_ranking = st.session_state.get('ranking', [])
     current_count = len(current_ranking)
@@ -107,7 +111,6 @@ else:
         cols = st.columns(2)
         for idx, p in enumerate(remaining):
             icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
-            
             with cols[idx % 2]:
                 st.button(
                     f"{icon} {p['label']}", 
@@ -116,7 +119,7 @@ else:
                     use_container_width=True
                 )
     else:
-        # --- 7. HALAMAN SELESAI & KIRIM DATA ---
+        # --- 7. HALAMAN HASIL & KIRIM ---
         st.balloons()
         st.success("🏁 Semua paket telah berhasil diurutkan!")
         
@@ -126,28 +129,26 @@ else:
         })
         st.dataframe(df_display, use_container_width=True)
 
-        # TOMBOL KIRIM DENGAN LOGIKA DEBUG
         if st.button("📤 KIRIM DATA KE DATABASE PUSAT", use_container_width=True, type="primary"):
-            with st.spinner("Menghubungi database Google..."):
-                status_code, reason = send_to_google_form(
+            with st.spinner("Menghubungi server Google..."):
+                status, reason = send_to_google_form(
                     user['nama'], 
                     user['angkatan'], 
                     user['nim'], 
                     st.session_state.ranking
                 )
                 
-                if status_code == 200:
-                    st.success("✅ Data Berhasil Masuk ke Google Sheets!")
+                if status == 200:
+                    st.success("✅ Data Berhasil Tersimpan!")
                     st.balloons()
                 else:
-                    st.error(f"❌ Gagal mengirim. Status: {status_code} ({reason})")
-                    st.info("Saran: Jika Error 403/401, pastikan 'Restrict to UIN' di Google Form sudah DIMATIKAN.")
+                    st.error(f"❌ Error {status}: {reason}")
+                    st.info("Pesan 401 berarti Google Form kamu masih terkunci.")
 
-        # Tombol Backup
         csv = df_display.to_csv(index=False).encode('utf-8')
         st.download_button("💾 Backup: Download CSV", data=csv, file_name=f"rank_{user['nim']}.csv", use_container_width=True)
 
-    # --- 8. SIDEBAR CONTROL ---
+    # --- 8. SIDEBAR ---
     with st.sidebar:
         st.header("Kontrol")
         if st.button("🔄 Ulangi Ranking"):
@@ -157,5 +158,3 @@ else:
             st.session_state.user_data = None
             st.session_state.ranking = []
             st.rerun()
-        st.divider()
-        st.caption("Aplikasi Riset Conjoint - Aruna 2026")
