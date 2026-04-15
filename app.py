@@ -1,118 +1,148 @@
 import streamlit as st
 import pandas as pd
 
-# --- KONFIGURASI HALAMAN ---
+# --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Riset Paket Makan UIN RMS", layout="centered")
 
-# --- CUSTOM CSS UNTUK TAMPILAN ---
-st.markdown("""
-    <style>
-    div.stButton > button {
-        height: 3em;
-        border-radius: 10px;
-        border: 1px solid #ddd;
-        transition: all 0.3s;
-    }
-    /* Warna khusus per kategori (Visual Cues) */
-    .paha-btn { background-color: #FFF3E0; border-left: 5px solid #FF9800 !important; }
-    .dada-btn { background-color: #E3F2FD; border-left: 5px solid #2196F3 !important; }
-    .sayap-btn { background-color: #F1F8E9; border-left: 5px solid #8BC34A !important; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- 2. INITIALIZING SESSION STATE (Pencegahan AttributeError) ---
+# Kita pastikan semua kunci "lahir" dulu saat aplikasi pertama kali dibuka
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = None
 
-# --- INITIALIZING SESSION STATE ---
+if 'ranking' not in st.session_state:
+    st.session_state.ranking = []
+
 if 'profiles' not in st.session_state:
+    # Generasi 27 profil secara otomatis
     parts = ["Paha", "Dada", "Sayap"]
     flavors = ["Pedas", "Sedang", "G Pedas"]
     drinks = ["Es Teh", "Es Jeruk", "Air Mineral"]
-    # List of Dict untuk mempermudah identifikasi kategori
     st.session_state.profiles = [
         {"label": f"{p} | {f} | {d}", "kat": p} 
         for p in parts for f in flavors for d in drinks
     ]
-    st.session_state.ranking = []
-    st.session_state.user_data = None
 
-# --- FUNGSI LOGIKA ---
-def handle_click(profile_label):
-    st.session_state.ranking.append(profile_label)
+# --- 3. CUSTOM CSS (Visual Identity) ---
+st.markdown("""
+    <style>
+    /* Styling tombol agar lebih besar dan melengkung */
+    div.stButton > button {
+        height: 3.5em;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        margin-bottom: 10px;
+    }
+    /* Efek hover agar interaktif */
+    div.stButton > button:hover {
+        transform: scale(1.02);
+        border-color: #FF4B4B;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 1. HALAMAN LOGIN (GATE) ---
-if st.session_state.user_data is None:
-    st.title("🍗 Survei Preferensi Rasa")
-    st.write("Silakan isi identitas Anda untuk memulai.")
+# --- 4. HALAMAN LOGIN (GATE) ---
+# Menggunakan .get() agar ekstra aman dari error
+if st.session_state.get('user_data') is None:
+    st.title("🍗 Riset Preferensi Paket Makan")
+    st.subheader("Data Science UIN Raden Mas Said")
+    st.write("Selamat datang! Mohon isi identitas singkat sebelum memulai pemilihan.")
     
-    with st.form("login_form"):
-        nama = st.text_input("Nama Panggil")
-        nim = st.text_input("3 Angka Terakhir NIM", max_chars=3)
-        submit_auth = st.form_submit_button("Mulai Pilih")
+    with st.form("gate_form"):
+        nama = st.text_input("Nama Panggil", placeholder="Masukkan nama Anda...")
+        nim = st.text_input("3 Angka Terakhir NIM", placeholder="Contoh: 042", max_chars=3)
         
-        if submit_auth:
-            if nama and nim.isdigit() and len(nim) == 3:
+        st.caption("Data ini digunakan untuk validasi responden murni.")
+        submit_btn = st.form_submit_button("Masuk ke Pemilihan")
+        
+        if submit_btn:
+            if nama.strip() != "" and nim.isdigit() and len(nim) == 3:
                 st.session_state.user_data = {"nama": nama, "nim": nim}
                 st.rerun()
             else:
-                st.error("Mohon isi nama dan 3 angka NIM dengan benar!")
+                st.warning("⚠️ Mohon masukkan Nama dan 3 angka NIM dengan benar!")
 
-# --- 2. HALAMAN PEMILIHAN ---
+# --- 5. HALAMAN PEMILIHAN ---
 else:
-    st.title(f"Halo, {st.session_state.user_data['nama']}!")
-    st.write("Klik paket di bawah sesuai urutan yang **paling Anda inginkan**.")
-    
-    # Progress Bar agar responden tahu sisa tugasnya
-    progress = len(st.session_state.ranking) / 27
-    st.progress(progress)
-    st.caption(f"Terpilih: {len(st.session_state.ranking)} dari 27 paket")
+    user = st.session_state.user_data
+    st.title(f"Halo, {user['nama']}! 👋")
+    st.write("Silakan klik paket di bawah berdasarkan urutan **PALING ANDA INGINKAN**.")
+    st.write("Pilihan akan menghilang satu per satu setelah Anda klik.")
 
-    # Filter sisa profil yang belum diklik
+    # Indikator Progres (Sangat penting untuk UX)
+    total_profil = 27
+    terpilih = len(st.session_state.ranking)
+    progress_val = terpilih / total_profil
+    
+    st.progress(progress_val)
+    st.info(f"Progress: **{terpilih}** dari **{total_profil}** paket terurut.")
+
+    # Ambil sisa profil yang belum dipilih
     remaining = [p for p in st.session_state.profiles if p['label'] not in st.session_state.ranking]
 
     if remaining:
-        # Menampilkan Grid Tombol
+        # Menampilkan Grid 2 Kolom (Cocok untuk Mobile)
         cols = st.columns(2)
         for idx, p in enumerate(remaining):
-            # Beri icon berdasarkan kategori
-            icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
-            label_full = f"{icon} {p['label']}"
+            # Logika Warna & Icon berdasarkan Kategori (Visual Differentiation)
+            if p['kat'] == "Paha":
+                btn_label = f"🍗 {p['label']}"
+            elif p['kat'] == "Dada":
+                btn_label = f"🥩 {p['label']}"
+            else: # Sayap
+                btn_label = f"🕊️ {p['label']}"
             
             with cols[idx % 2]:
+                # Tombol Aksi
                 st.button(
-                    label_full, 
-                    key=p['label'], 
-                    on_click=handle_click, 
-                    args=(p['label'],), 
+                    btn_label, 
+                    key=f"btn_{p['label']}", 
+                    on_click=lambda l=p['label']: st.session_state.ranking.append(l),
                     use_container_width=True
                 )
     else:
-        # --- 3. HALAMAN HASIL ---
-        st.success("✅ Semua paket telah diurutkan!")
+        # --- 6. HALAMAN HASIL (SELESAI) ---
+        st.balloons()
+        st.success("🏁 Luar biasa! Anda telah menyelesaikan seluruh urutan.")
         
-        # Susun DataFrame Akhir
+        # Susun data hasil dalam tabel murni
+        # Peringkat 1 adalah yang diklik PERTAMA (Paling Disukai)
         df_result = pd.DataFrame({
-            "Nama": st.session_state.user_data['nama'],
-            "NIM_Akhir": st.session_state.user_data['nim'],
             "Peringkat": range(1, 28),
-            "Pilihan_Profil": st.session_state.ranking
+            "Profil Paket": st.session_state.ranking
         })
         
+        # Tambahkan metadata user ke DataFrame untuk CSV
+        df_export = df_result.copy()
+        df_export['Responden'] = user['nama']
+        df_export['NIM_3'] = user['nim']
+
+        st.subheader("Ringkasan Urutan Anda:")
         st.dataframe(df_result, use_container_width=True)
         
-        # Download Data
-        csv = df_result.to_csv(index=False).encode('utf-8')
+        # Ekspor Data
+        csv = df_export.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📩 Download Hasil Data",
+            label="💾 Download Hasil Data (CSV)",
             data=csv,
-            file_name=f"hasil_{st.session_state.user_data['nim']}.csv",
+            file_name=f"data_ranking_{user['nim']}.csv",
             mime="text/csv",
             use_container_width=True
         )
+        
+        st.warning("Pastikan Anda sudah menekan tombol download sebelum menutup halaman ini.")
 
-    # Tombol Reset
-    if st.sidebar.button("🔄 Reset Pilihan"):
-        st.session_state.ranking = []
-        st.rerun()
-
-    if st.sidebar.button("🚪 Keluar/Ganti User"):
-        st.session_state.user_data = None
-        st.session_state.ranking = []
-        st.rerun()
+    # --- 7. SIDEBAR (KONTROL EXTRA) ---
+    with st.sidebar:
+        st.header("Opsi")
+        if st.button("🔄 Ulangi Ranking"):
+            st.session_state.ranking = []
+            st.rerun()
+        
+        if st.button("🚪 Keluar / Ganti User"):
+            st.session_state.user_data = None
+            st.session_state.ranking = []
+            st.rerun()
+            
+        st.divider()
+        st.caption("Riset Conjoint Analysis - Sains Data UIN RMS")
