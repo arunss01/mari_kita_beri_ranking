@@ -21,7 +21,7 @@ if 'profiles' not in st.session_state:
         for p in parts for f in flavors for d in drinks
     ]
 
-# --- 3. CUSTOM CSS ---
+# --- 3. CUSTOM CSS (Visual Identity) ---
 st.markdown("""
     <style>
     div.stButton > button {
@@ -39,42 +39,37 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI KIRIM DATA (STRICT VERSION) ---
+# --- 4. FUNGSI KIRIM DATA (Update dengan ID Baru) ---
 def send_to_google_form(nama, angkatan, nim, ranking_list):
-    # Endpoint formResponse
-    form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfv9fJ-I8ilVD8DBKyrrETja-zySAiOgKu2zJACwknvgDABzw/formResponse"
+    # Mengubah /viewform menjadi /formResponse
+    form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfqFjwF7MgIFpXtk7PrZ6VLRIch6KilFYBc5KekeM2Z__i-GQ/formResponse"
     
     ranking_string = ", ".join(ranking_list)
     
-    # Payload ID sesuai link yang kamu berikan
+    # PAYLOAD BARU berdasarkan link yang kamu berikan
     payload = {
-        "entry.136391246": nama,
-        "entry.79359752": angkatan,
-        "entry.616519573": nim,
-        "entry.86268960": ranking_string
+        "entry.90333049": nama,          # A
+        "entry.346547701": angkatan,     # B
+        "entry.218479489": nim,           # C
+        "entry.540131417": ranking_string # D
     }
     
-    # Headers lebih lengkap untuk meniru browser Chrome terbaru
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://docs.google.com/forms/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
     try:
-        # Menggunakan session agar lebih stabil
-        session = requests.Session()
-        response = session.post(form_url, data=payload, headers=headers, timeout=10)
+        response = requests.post(form_url, data=payload, headers=headers, timeout=10)
         return response.status_code, response.reason
     except Exception as e:
         return 500, str(e)
 
-# --- 5. HALAMAN LOGIN ---
+# --- 5. HALAMAN LOGIN (GATE) ---
 if st.session_state.get('user_data') is None:
     st.title("🍗 Riset Preferensi Paket Makan")
-    st.subheader("Data Science UIN Raden Mas Said")
-    st.write("Silakan isi identitas Anda untuk memulai.")
+    st.subheader("Sains Data UIN Raden Mas Said")
+    st.write("Silakan isi identitas Anda untuk memulai pemilihan urutan.")
     
     with st.form("login_gate"):
         nama = st.text_input("Nama Panggil", placeholder="Masukkan nama...")
@@ -94,7 +89,7 @@ if st.session_state.get('user_data') is None:
 else:
     user = st.session_state.user_data
     st.title(f"Halo, {user['nama']}! 👋")
-    st.write("Klik paket sesuai urutan **PALING DISUKAI** (Pilihan akan menghilang).")
+    st.write("Klik paket sesuai urutan **PALING DISUKAI**.")
 
     # Progress bar
     total = 27
@@ -130,7 +125,7 @@ else:
         st.dataframe(df_display, use_container_width=True)
 
         if st.button("📤 KIRIM DATA KE DATABASE PUSAT", use_container_width=True, type="primary"):
-            with st.spinner("Menghubungi server Google..."):
+            with st.spinner("Mengirim ke Google Sheets..."):
                 status, reason = send_to_google_form(
                     user['nama'], 
                     user['angkatan'], 
@@ -143,7 +138,7 @@ else:
                     st.balloons()
                 else:
                     st.error(f"❌ Error {status}: {reason}")
-                    st.info("Pesan 401 berarti Google Form kamu masih terkunci.")
+                    st.info("Penting: Pastikan link Form baru ini bisa dibuka di Mode Penyamaran tanpa Login.")
 
         csv = df_display.to_csv(index=False).encode('utf-8')
         st.download_button("💾 Backup: Download CSV", data=csv, file_name=f"rank_{user['nim']}.csv", use_container_width=True)
@@ -158,3 +153,5 @@ else:
             st.session_state.user_data = None
             st.session_state.ranking = []
             st.rerun()
+        st.divider()
+        st.caption("Aplikasi Riset Conjoint - Aruna 2026")
