@@ -21,7 +21,7 @@ if 'profiles' not in st.session_state:
         for p in parts for f in flavors for d in drinks
     ]
 
-# --- 3. CUSTOM CSS (Visual Identity) ---
+# --- 3. CUSTOM CSS ---
 st.markdown("""
     <style>
     div.stButton > button {
@@ -39,18 +39,16 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI KIRIM DATA (Update dengan ID Baru) ---
+# --- 4. FUNGSI KIRIM DATA (Pintu Google Form Baru) ---
 def send_to_google_form(nama, angkatan, nim, ranking_list):
-    # Mengubah /viewform menjadi /formResponse
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfqFjwF7MgIFpXtk7PrZ6VLRIch6KilFYBc5KekeM2Z__i-GQ/formResponse"
     
     ranking_string = ", ".join(ranking_list)
     
-    # PAYLOAD BARU berdasarkan link yang kamu berikan
     payload = {
         "entry.90333049": nama,          # A
         "entry.346547701": angkatan,     # B
-        "entry.218479489": nim,           # C
+        "entry.218479489": nim,          # C
         "entry.540131417": ranking_string # D
     }
     
@@ -65,11 +63,11 @@ def send_to_google_form(nama, angkatan, nim, ranking_list):
     except Exception as e:
         return 500, str(e)
 
-# --- 5. HALAMAN LOGIN (GATE) ---
+# --- 5. HALAMAN LOGIN ---
 if st.session_state.get('user_data') is None:
     st.title("🍗 Riset Preferensi Paket Makan")
     st.subheader("Sains Data UIN Raden Mas Said")
-    st.write("Silakan isi identitas Anda untuk memulai pemilihan urutan.")
+    st.write("Silakan isi identitas Anda untuk memulai.")
     
     with st.form("login_gate"):
         nama = st.text_input("Nama Panggil", placeholder="Masukkan nama...")
@@ -89,20 +87,23 @@ if st.session_state.get('user_data') is None:
 else:
     user = st.session_state.user_data
     st.title(f"Halo, {user['nama']}! 👋")
-    st.write("Klik paket sesuai urutan **PALING DISUKAI**.")
-
-    # Progress bar
+    
+    # Perhitungan Progress yang Lebih Aman
     total = 27
     current_ranking = st.session_state.get('ranking', [])
     current_count = len(current_ranking)
     
-    st.progress(current_count / total)
-    st.info(f"Progress: **{current_count}** dari **{total}** paket terurut.")
-
     # Filter sisa opsi
     remaining = [p for p in st.session_state.profiles if p['label'] not in current_ranking]
 
     if remaining:
+        st.write("Klik paket sesuai urutan **PALING DISUKAI**.")
+        
+        # PERBAIKAN: Gunakan min(..., 1.0) untuk mencegah nilai melebihi batas 100%
+        progress_value = min(float(current_count) / total, 1.0)
+        st.progress(progress_value)
+        st.info(f"Progress: **{current_count}** dari **{total}** paket terurut.")
+
         cols = st.columns(2)
         for idx, p in enumerate(remaining):
             icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
@@ -138,7 +139,7 @@ else:
                     st.balloons()
                 else:
                     st.error(f"❌ Error {status}: {reason}")
-                    st.info("Penting: Pastikan link Form baru ini bisa dibuka di Mode Penyamaran tanpa Login.")
+                    st.info("Cek kembali apakah Google Form baru ini sudah diatur 'Public'.")
 
         csv = df_display.to_csv(index=False).encode('utf-8')
         st.download_button("💾 Backup: Download CSV", data=csv, file_name=f"rank_{user['nim']}.csv", use_container_width=True)
