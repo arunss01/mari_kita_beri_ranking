@@ -92,12 +92,11 @@ if st.session_state.submitted:
     st.markdown(f"""
     ### Terima kasih, {st.session_state.user_data['nama']}!
     
-    Kontribusi lo sangat berarti buat riset kami. Pilihan yang lo berikan bakal jadi bahan utama 
+    Kontribusi Kamu sangat berarti buat riset kami. Pilihan yang Kamu berikan bakal jadi bahan utama 
     buat nemuin kombinasi paket makan paling ideal lewat analisis data yang kami lakukan.
     
     **Apa selanjutnya?**
-    Lo bisa menutup halaman ini sekarang. Info lebih lanjut mengenai hasil riset akan 
-    kami bagikan setelah seluruh data terkumpul dan diolah.
+    Kamu bisa menutup halaman ini sekarang.
     
     *Stay curious, stay hungry!*
     """)
@@ -136,9 +135,9 @@ else:
         st.markdown(f"""
         <div class="guide-box">
             <b>Teknis Pengisian:</b><br>
-            • Klik paket makanan mulai dari yang <b>Paling Lo Suka</b> sampai <b>Paling Gak Disuka</b>.<br>
+            • Klik paket makanan mulai dari yang <b>Paling Kamu Suka</b> sampai <b>Paling Gak Disuka</b>.<br>
             • Klik pertama akan mendapat skor tertinggi (27), klik terakhir skor terendah (1).<br>
-            • Paket yang udah lo klik bakal hilang dari daftar.<br><br>
+            • Paket yang udah kamu klik bakal hilang dari daftar.<br><br>
             🎯 <b>Sekarang pilih paket untuk peringkat ke-{current_rank}</b>
         </div>
         """, unsafe_allow_html=True)
@@ -157,7 +156,7 @@ else:
     else:
         # HALAMAN KONFIRMASI SEBELUM KIRIM
         st.success("🏁 Semua paket sudah diurutkan!")
-        st.write("Periksa kembali urutan pilihan lo di bawah sebelum mengirim.")
+        st.write("Periksa kembali urutan pilihan Kamu di bawah sebelum mengirim.")
         
         # Mapping untuk tampilan tabel (agar user paham 1st click = Skor 27)
         summary = []
