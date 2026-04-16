@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Riset Paket Makan - FAHAM TEAM", layout="centered", page_icon="🍗")
+st.set_page_config(page_title="Riset Analisis Multivariat - FAHAM TEAM", layout="centered")
 
 # --- 2. INITIALIZING SESSION STATE ---
 if 'user_data' not in st.session_state:
@@ -19,7 +19,7 @@ if 'submitted' not in st.session_state:
     st.session_state.submitted = False
 
 if 'profiles' not in st.session_state:
-    # URUTAN PROFIL 1-27 SESUAI GAMBAR
+    # URUTAN PROFIL 1-27 SESUAI SPESIFIKASI RISET
     parts = ["Paha", "Dada", "Sayap"]
     flavors = ["Pedas", "Sedang", "G Pedas"]
     drinks = ["Es Teh", "Es Jeruk", "Air Mineral"]
@@ -37,32 +37,40 @@ st.markdown("""
         font-weight: 600;
         margin-bottom: 10px;
     }
-    .guide-box {
+    .intro-box {
         background-color: #f8f9fa;
-        padding: 20px;
+        padding: 25px;
         border-radius: 12px;
-        border-left: 5px solid #FF4B4B;
+        border: 1px solid #e0e0e0;
         margin-bottom: 25px;
-        color: #31333F;
+        line-height: 1.6;
+    }
+    .team-box {
+        font-size: 0.85em;
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-top: 10px;
     }
     .footer {
         text-align: center;
         color: #888;
-        padding: 50px 0 20px 0;
+        padding: 40px 0 20px 0;
         font-size: 0.8em;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI KIRIM DATA (DENGAN KONVERSI SKOR 27-1) ---
+# --- 4. FUNGSI KIRIM DATA (KONVERSI SKOR: KLIK 1 = 27) ---
 def send_to_google_form(nama, angkatan, nim):
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfqFjwF7MgIFpXtk7PrZ6VLRIch6KilFYBc5KekeM2Z__i-GQ/formResponse"
     
-    # LOGIKA KONVERSI: Klik 1 -> 27, Klik 2 -> 26, ..., Klik 27 -> 1
+    # Mapping ranking berdasarkan urutan Profil 1-27
     ordered_results = []
     for p in st.session_state.profiles:
         click_order = st.session_state.assigned_ranks.get(p['label'], 27)
-        # Rumus: 28 - urutan_klik
+        # Konversi: Klik pertama mendapatkan poin 27 (tertinggi)
         transformed_score = 28 - click_order
         ordered_results.append(str(transformed_score))
     
@@ -85,42 +93,54 @@ def send_to_google_form(nama, angkatan, nim):
 
 # --- 5. LOGIKA HALAMAN ---
 
-# A. HALAMAN SETELAH SUBMIT (POST-SUBMISSION)
+# A. HALAMAN SETELAH SUBMIT
 if st.session_state.submitted:
     st.balloons()
-    st.title("✅ Data Berhasil Terkirim!")
+    st.title("Data Berhasil Terkirim")
     st.markdown(f"""
-    ### Terima kasih, {st.session_state.user_data['nama']}!
+    ### Terima kasih atas partisipasi Kamu, {st.session_state.user_data['nama']}
     
-    Kontribusi Kamu sangat berarti buat riset kami. Pilihan yang Kamu berikan bakal jadi bahan utama 
-    buat nemuin kombinasi paket makan paling ideal lewat analisis data yang kami lakukan.
+    Kontribusi Kamu dalam riset ini sangat berharga bagi kelancaran analisis multivariat kami. 
+    Data yang Kamu berikan telah tersimpan secara aman di database pusat FAHAM TEAM untuk selanjutnya diolah menjadi temuan ilmiah mengenai preferensi konsumen.
     
-    **Apa selanjutnya?**
-    Kamu bisa menutup halaman ini sekarang.
-    
-    *Stay curious, stay hungry!*
+    Kamu diperbolehkan menutup halaman ini sekarang.
     """)
-    
-    st.info("💡 Pilihan lo sudah tersimpan secara otomatis di database pusat FAHAM TEAM.")
-    
-    st.markdown('<div class="footer">© 2026 FAHAM TEAM. All rights reserved.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer">© 2026 FAHAM TEAM. Program Studi Sains Data UIN Raden Mas Said Surakarta.</div>', unsafe_allow_html=True)
 
-# B. HALAMAN LOGIN (GATE)
+# B. HALAMAN LOGIN & INFORMASI PENELITIAN
 elif st.session_state.user_data is None:
-    st.title("🍗 Riset Preferensi Paket Makan")
-    st.write("Selamat datang! Riset ini dilakukan untuk memetakan paket makan favorit mahasiswa.")
+    st.title("Riset Preferensi Konsumen Terhadap Paket Menu Ayam")
+    
+    st.markdown("""
+    <div class="intro-box">
+        <b>Tentang Penelitian:</b><br>
+        Penelitian ini bertujuan untuk menganalisis preferensi mahasiswa terhadap berbagai kombinasi atribut paket menu ayam menggunakan metode statistika multivariat. 
+        Data yang Kamu berikan akan diolah secara anonim dan murni digunakan untuk kepentingan pengembangan keilmuan Sains Data.<br><br>
+        <b>Kriteria Responden:</b> Mahasiswa Program Studi Sains Data UIN Raden Mas Said Surakarta.<br>
+        <b>Estimasi Waktu:</b> 1-3 Menit.<br><br>
+        <b>Disusun Oleh FAHAM TEAM:</b>
+        <div class="team-box">
+            1. Annisa Zahrotu Firda Asfari (247411003)<br>
+            2. Luthfiya Zuhura Syifa Fuadah (247411008)<br>
+            3. Melani Yusi Aryanda (247411011)<br>
+            4. Haya Nur Fadhilah (247411014)<br>
+            5. Ahmad Ruhayani Azis (247411018)
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     with st.form("login_gate"):
-        nama = st.text_input("Nama Panggil", placeholder="Siapa nama lo?")
-        angkatan = st.selectbox("Angkatan", ["2023", "2024", "2025"], index=None, placeholder="Pilih tahun...")
+        st.write("Silakan lengkapi identitas untuk memulai:")
+        nama = st.text_input("Nama Panggil", placeholder="Tuliskan nama Kamu")
+        angkatan = st.selectbox("Angkatan", ["2023", "2024", "2025"], index=None, placeholder="Pilih tahun angkatan")
         nim = st.text_input("3 Angka Terakhir NIM", placeholder="Contoh: 042", max_chars=3)
         
-        if st.form_submit_button("Mulai Pilih Paket"):
+        if st.form_submit_button("Masuk ke Halaman Pemilihan"):
             if nama.strip() and angkatan and nim.isdigit() and len(nim) == 3:
                 st.session_state.user_data = {"nama": nama, "angkatan": angkatan, "nim": nim}
                 st.rerun()
             else:
-                st.warning("⚠️ Isi Nama, Angkatan, dan 3 digit NIM dulu ya!")
+                st.warning("Mohon lengkapi identitas Nama, Angkatan, dan 3 digit NIM.")
     
     st.markdown('<div class="footer">© 2026 FAHAM TEAM</div>', unsafe_allow_html=True)
 
@@ -130,15 +150,15 @@ else:
     current_rank = st.session_state.click_counter
     
     if current_rank <= 27:
-        st.title(f"Halo, {user['nama']}! 👋")
+        st.title("Pemilihan Preferensi Menu")
         
         st.markdown(f"""
-        <div class="guide-box">
-            <b>Teknis Pengisian:</b><br>
-            • Klik paket makanan mulai dari yang <b>Paling Kamu Suka</b> sampai <b>Paling Gak Disuka</b>.<br>
-            • Klik pertama akan mendapat skor tertinggi (27), klik terakhir skor terendah (1).<br>
-            • Paket yang udah kamu klik bakal hilang dari daftar.<br><br>
-            🎯 <b>Sekarang pilih paket untuk peringkat ke-{current_rank}</b>
+        <div class="intro-box">
+            <b>Panduan Teknis:</b><br>
+            1. Klik paket makanan secara berurutan mulai dari yang <b>Paling Kamu Suka</b> hingga <b>Paling Kurang Disukai</b>.<br>
+            2. Klik pertama akan mendapatkan nilai tertinggi (27), sedangkan klik terakhir mendapatkan nilai terendah (1).<br>
+            3. Menu yang telah Kamu klik akan otomatis menghilang dari daftar pilihan.<br><br>
+            Status: Sedang menentukan pilihan untuk <b>Peringkat ke-{current_rank}</b>
         </div>
         """, unsafe_allow_html=True)
         
@@ -154,30 +174,29 @@ else:
                     st.session_state.click_counter += 1
                     st.rerun()
     else:
-        # HALAMAN KONFIRMASI SEBELUM KIRIM
-        st.success("🏁 Semua paket sudah diurutkan!")
-        st.write("Periksa kembali urutan pilihan Kamu di bawah sebelum mengirim.")
+        st.title("Konfirmasi Data")
+        st.success("Seluruh paket telah berhasil diurutkan berdasarkan preferensi Kamu.")
+        st.write("Silakan periksa kembali urutan klik Kamu sebelum mengirim data ke server.")
         
-        # Mapping untuk tampilan tabel (agar user paham 1st click = Skor 27)
         summary = []
         for i, p in enumerate(st.session_state.profiles):
             click_order = st.session_state.assigned_ranks[p['label']]
             summary.append({
                 "Profil": f"Profil_{i+1}",
-                "Menu": p['label'],
-                "Klik Ke-": click_order,
-                "Skor Akhir": 28 - click_order
+                "Atribut Menu": p['label'],
+                "Urutan Klik": click_order,
+                "Skor Terbobot": 28 - click_order
             })
         
-        st.table(pd.DataFrame(summary))
+        st.dataframe(pd.DataFrame(summary), use_container_width=True)
 
-        if st.button("📤 KIRIM DATA KE DATABASE PUSAT", use_container_width=True, type="primary"):
-            with st.spinner("Mengirim data..."):
+        if st.button("Kirim Data ke Database Pusat", use_container_width=True, type="primary"):
+            with st.spinner("Sedang memproses pengiriman data..."):
                 status = send_to_google_form(user['nama'], user['angkatan'], user['nim'])
                 if status == 200:
                     st.session_state.submitted = True
                     st.rerun()
                 else:
-                    st.error(f"❌ Gagal mengirim. (Status: {status})")
+                    st.error(f"Gagal mengirim data. (Status Error: {status})")
 
     st.markdown('<div class="footer">© 2026 FAHAM TEAM</div>', unsafe_allow_html=True)
