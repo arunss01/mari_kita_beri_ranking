@@ -5,17 +5,25 @@ import requests
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Riset Paket Makan UIN RMS", layout="centered", page_icon="🍗")
 
-# --- 2. INITIALIZING SESSION STATE ---
+# --- 2. INITIALIZING SESSION STATE (Pencegahan Error) ---
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 
-if 'ranking' not in st.session_state:
-    st.session_state.ranking = []
+# click_counter untuk menentukan urutan klik (1, 2, 3... sampai 27)
+if 'click_counter' not in st.session_state:
+    st.session_state.click_counter = 1
+
+# Dictionary untuk menyimpan: { "Label Profil": Nilai_Ranking }
+if 'assigned_ranks' not in st.session_state:
+    st.session_state.assigned_ranks = {}
 
 if 'profiles' not in st.session_state:
+    # MENGIKUTI URUTAN GAMBAR: Paha(1-9), Dada(10-18), Sayap(19-27)
     parts = ["Paha", "Dada", "Sayap"]
     flavors = ["Pedas", "Sedang", "G Pedas"]
     drinks = ["Es Teh", "Es Jeruk", "Air Mineral"]
+    
+    # List ini akan menjadi master urutan Profil 1 sampai 27
     st.session_state.profiles = [
         {"label": f"{p} | {f} | {d}", "kat": p} 
         for p in parts for f in flavors for d in drinks
@@ -39,17 +47,28 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI KIRIM DATA (Pintu Google Form Baru) ---
-def send_to_google_form(nama, angkatan, nim, ranking_list):
+# --- 4. FUNGSI KIRIM DATA (Mapping Ranking ke ID Profil) ---
+def send_to_google_form(nama, angkatan, nim):
+    # Endpoint Form Baru kamu
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfqFjwF7MgIFpXtk7PrZ6VLRIch6KilFYBc5KekeM2Z__i-GQ/formResponse"
     
-    ranking_string = ", ".join(ranking_list)
+    # --- LOGIKA PEMETAAN (MAPPING) ---
+    # Kita membuat string hasil dengan menyisir daftar profil dari 1 sampai 27.
+    # Sehingga posisi angka dalam string mewakili ID Profilnya.
+    ordered_results = []
+    for p in st.session_state.profiles:
+        # Ambil nilai ranking yang tersimpan untuk profil ini
+        rank_value = st.session_state.assigned_ranks.get(p['label'], 0)
+        ordered_results.append(str(rank_value))
+    
+    # Menghasilkan string seperti: "3,1,2,5,..."
+    ranking_string = ",".join(ordered_results)
     
     payload = {
-        "entry.90333049": nama,          # A
-        "entry.346547701": angkatan,     # B
-        "entry.218479489": nim,          # C
-        "entry.540131417": ranking_string # D
+        "entry.90333049": nama,           # Input A
+        "entry.346547701": angkatan,      # Input B
+        "entry.218479489": nim,           # Input C
+        "entry.540131417": ranking_string # Input D
     }
     
     headers = {
@@ -59,15 +78,14 @@ def send_to_google_form(nama, angkatan, nim, ranking_list):
     
     try:
         response = requests.post(form_url, data=payload, headers=headers, timeout=10)
-        return response.status_code, response.reason
-    except Exception as e:
-        return 500, str(e)
+        return response.status_code
+    except:
+        return 500
 
-# --- 5. HALAMAN LOGIN ---
+# --- 5. HALAMAN LOGIN (GATE) ---
 if st.session_state.get('user_data') is None:
     st.title("🍗 Riset Preferensi Paket Makan")
     st.subheader("Sains Data UIN Raden Mas Said")
-    st.write("Silakan isi identitas Anda untuk memulai.")
     
     with st.form("login_gate"):
         nama = st.text_input("Nama Panggil", placeholder="Masukkan nama...")
@@ -88,71 +106,64 @@ else:
     user = st.session_state.user_data
     st.title(f"Halo, {user['nama']}! 👋")
     
-    # Perhitungan Progress yang Lebih Aman
-    total = 27
-    current_ranking = st.session_state.get('ranking', [])
-    current_count = len(current_ranking)
+    current_count = st.session_state.click_counter
     
-    # Filter sisa opsi
-    remaining = [p for p in st.session_state.profiles if p['label'] not in current_ranking]
-
-    if remaining:
-        st.write("Klik paket sesuai urutan **PALING DISUKAI**.")
+    if current_count <= 27:
+        st.write(f"Pilih paket untuk **Peringkat ke-{current_count}**")
+        st.caption("(Klik menu yang paling Anda inginkan saat ini)")
         
-        # PERBAIKAN: Gunakan min(..., 1.0) untuk mencegah nilai melebihi batas 100%
-        progress_value = min(float(current_count) / total, 1.0)
-        st.progress(progress_value)
-        st.info(f"Progress: **{current_count}** dari **{total}** paket terurut.")
-
+        # Progress Bar
+        progress_val = min(float(current_count - 1) / 27, 1.0)
+        st.progress(progress_val)
+        
+        # Tampilkan Grid Tombol (Tetap urut tapi yang sudah dipilih menghilang)
         cols = st.columns(2)
-        for idx, p in enumerate(remaining):
-            icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
-            with cols[idx % 2]:
-                st.button(
-                    f"{icon} {p['label']}", 
-                    key=f"btn_{p['label']}", 
-                    on_click=lambda l=p['label']: st.session_state.ranking.append(l),
-                    use_container_width=True
-                )
+        for idx, p in enumerate(st.session_state.profiles):
+            # Cek apakah profil ini sudah diklik/diberi ranking
+            if p['label'] not in st.session_state.assigned_ranks:
+                icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
+                with cols[idx % 2]:
+                    if st.button(f"{icon} {p['label']}", key=f"btn_{idx}", use_container_width=True):
+                        # Simpan nomor urutan klik (Rank) ke profil tersebut
+                        st.session_state.assigned_ranks[p['label']] = st.session_state.click_counter
+                        st.session_state.click_counter += 1
+                        st.rerun()
     else:
-        # --- 7. HALAMAN HASIL & KIRIM ---
+        # --- 7. HALAMAN HASIL & KIRIM DATA ---
         st.balloons()
         st.success("🏁 Semua paket telah berhasil diurutkan!")
         
-        df_display = pd.DataFrame({
-            "Peringkat": range(1, 28),
-            "Pilihan": st.session_state.ranking
-        })
-        st.dataframe(df_display, use_container_width=True)
+        # Tampilkan ringkasan urutan Profil 1-27
+        summary_list = []
+        for i, p in enumerate(st.session_state.profiles):
+            summary_list.append({
+                "ID": f"Profil_{i+1}",
+                "Menu": p['label'],
+                "Ranking": st.session_state.assigned_ranks[p['label']]
+            })
+        
+        df_summary = pd.DataFrame(summary_list)
+        st.subheader("Ringkasan Urutan Profil 1-27")
+        st.table(df_summary)
 
         if st.button("📤 KIRIM DATA KE DATABASE PUSAT", use_container_width=True, type="primary"):
-            with st.spinner("Mengirim ke Google Sheets..."):
-                status, reason = send_to_google_form(
-                    user['nama'], 
-                    user['angkatan'], 
-                    user['nim'], 
-                    st.session_state.ranking
-                )
-                
+            with st.spinner("Menyimpan ke Google Sheets..."):
+                status = send_to_google_form(user['nama'], user['angkatan'], user['nim'])
                 if status == 200:
-                    st.success("✅ Data Berhasil Tersimpan!")
+                    st.success("✅ Data berhasil tersimpan! Terima kasih.")
                     st.balloons()
                 else:
-                    st.error(f"❌ Error {status}: {reason}")
-                    st.info("Cek kembali apakah Google Form baru ini sudah diatur 'Public'.")
+                    st.error(f"❌ Gagal mengirim. Status: {status}")
 
-        csv = df_display.to_csv(index=False).encode('utf-8')
-        st.download_button("💾 Backup: Download CSV", data=csv, file_name=f"rank_{user['nim']}.csv", use_container_width=True)
-
-    # --- 8. SIDEBAR ---
+    # --- 8. SIDEBAR CONTROL ---
     with st.sidebar:
         st.header("Kontrol")
         if st.button("🔄 Ulangi Ranking"):
-            st.session_state.ranking = []
+            st.session_state.assigned_ranks = {}
+            st.session_state.click_counter = 1
             st.rerun()
-        if st.button("🚪 Keluar / Ganti User"):
+        if st.button("🚪 Ganti Responden"):
             st.session_state.user_data = None
-            st.session_state.ranking = []
+            st.session_state.assigned_ranks = {}
+            st.session_state.click_counter = 1
             st.rerun()
-        st.divider()
-        st.caption("Aplikasi Riset Conjoint - Aruna 2026")
