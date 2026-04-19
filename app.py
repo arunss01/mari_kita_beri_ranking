@@ -18,10 +18,11 @@ if 'assigned_ranks' not in st.session_state:
 if 'submitted' not in st.session_state:
     st.session_state.submitted = False
 
+# Definisi Atribut Baru (Total 12 Profil)
 if 'profiles' not in st.session_state:
-    parts = ["Paha", "Dada", "Sayap"]
-    flavors = ["Pedas", "Sedang", "G Pedas"]
-    drinks = ["Es Teh", "Es Jeruk", "Air Mineral"]
+    parts = ["Dada", "Paha", "Sayap"]
+    flavors = ["Pedas", "Gak Pedas"]
+    drinks = ["Teh/Jus/Soft Drink", "Air Mineral"]
     st.session_state.profiles = [
         {"label": f"{p} | {f} | {d}", "kat": p} 
         for p in parts for f in flavors for d in drinks
@@ -30,7 +31,6 @@ if 'profiles' not in st.session_state:
 # --- 3. CUSTOM CSS (ADAPTIF LIGHT & DARK MODE) ---
 st.markdown("""
     <style>
-    /* Menggunakan variabel sistem Streamlit agar adaptif */
     div.stButton > button {
         height: 3.5em;
         border-radius: 12px;
@@ -41,7 +41,6 @@ st.markdown("""
         border: 1px solid rgba(128, 128, 128, 0.2);
     }
     
-    /* Box Instruksi yang otomatis berubah warna sesuai tema */
     .intro-box {
         background-color: var(--secondary-background-color);
         color: var(--text-color);
@@ -53,7 +52,6 @@ st.markdown("""
         box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
     }
     
-    /* Box Tim di dalam intro agar lebih kontras */
     .team-box {
         font-size: 0.9em;
         background-color: rgba(128, 128, 128, 0.1);
@@ -74,13 +72,14 @@ st.markdown("""
 
 # --- 4. FUNGSI KIRIM DATA ---
 def send_to_google_form(nama, angkatan, nim):
+    # Ganti URL ini dengan URL Google Form Kamu yang baru jika perlu
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfqFjwF7MgIFpXtk7PrZ6VLRIch6KilFYBc5KekeM2Z__i-GQ/formResponse"
     
     ordered_results = []
     for p in st.session_state.profiles:
-        click_order = st.session_state.assigned_ranks.get(p['label'], 27)
-        transformed_score = 28 - click_order
-        ordered_results.append(str(transformed_score))
+        # Mengambil urutan klik langsung sebagai rank (1-12)
+        rank_value = st.session_state.assigned_ranks.get(p['label'], 12)
+        ordered_results.append(str(rank_value))
     
     ranking_string = ",".join(ordered_results)
     
@@ -107,8 +106,7 @@ if st.session_state.submitted:
     st.markdown(f"""
     ### Terima kasih atas partisipasi Kamu, {st.session_state.user_data['nama']}
     
-    Kontribusi Kamu dalam riset ini sangat berharga bagi kelancaran analisis multivariat kami. 
-    Data yang Kamu berikan telah tersimpan secara aman di database pusat FAHAM TEAM untuk selanjutnya diolah menjadi temuan ilmiah mengenai preferensi konsumen.
+    Data preferensi Kamu telah tersimpan. Urutan klik Kamu (1-12) telah dicatat sebagai representasi pilihan konsumen untuk analisis multivariat FAHAM TEAM.
     """)
     st.markdown('<div class="footer">© 2026 FAHAM TEAM. Program Studi Sains Data UIN Raden Mas Said Surakarta.</div>', unsafe_allow_html=True)
 
@@ -120,7 +118,7 @@ elif st.session_state.user_data is None:
         <strong>Tentang Penelitian:</strong><br>
         Penelitian ini bertujuan untuk menganalisis preferensi mahasiswa terhadap berbagai kombinasi atribut paket menu ayam menggunakan metode statistika multivariat.<br><br>
         <strong>Kriteria Responden:</strong> Mahasiswa Program Studi Sains Data UIN Raden Mas Said Surakarta.<br>
-        <strong>Estimasi Waktu:</strong> 1-3 Menit.<br><br>
+        <strong>Estimasi Waktu:</strong> 1 Menit.<br><br>
         <strong>Disusun Oleh FAHAM TEAM:</strong>
         <div class="team-box">
             1. Annisa Zahrotu Firda Asfari (247411003)<br>
@@ -151,45 +149,50 @@ else:
     user = st.session_state.user_data
     current_rank = st.session_state.click_counter
     
-    if current_rank <= 27:
+    if current_rank <= 12:
         st.title("Pemilihan Preferensi Menu")
         
         st.markdown(f"""
         <div class="intro-box">
             <strong>Panduan Teknis:</strong><br>
             1. Klik paket makanan secara berurutan mulai dari yang <strong>Paling Kamu Suka</strong> hingga <strong>Paling Kurang Disukai</strong>.<br>
-            2. Klik pertama akan mendapatkan nilai tertinggi (27), sedangkan klik terakhir mendapatkan nilai terendah (1).<br>
+            2. Klik pertama akan menjadi <strong>Peringkat 1 (Terbaik)</strong>, sedangkan klik terakhir menjadi <strong>Peringkat 12</strong>.<br>
             3. Menu yang telah Kamu klik akan otomatis menghilang dari daftar pilihan.<br><br>
             Status: Sedang menentukan pilihan untuk <strong>Peringkat ke-{current_rank}</strong>
         </div>
         """, unsafe_allow_html=True)
         
-        st.progress(min(float(current_rank - 1) / 27, 1.0))
+        st.progress(min(float(current_rank - 1) / 12, 1.0))
         
         remaining = [p for p in st.session_state.profiles if p['label'] not in st.session_state.assigned_ranks]
+        
+        # Grid layout untuk tombol
         cols = st.columns(2)
         for idx, p in enumerate(remaining):
-            # Penentuan icon tetap ada di label tapi tombol adaptif
-            icon = "🍗" if p['kat'] == "Paha" else "🥩" if p['kat'] == "Dada" else "🕊️"
+            # Penentuan icon sesuai bagian daging
+            icon = "🥩" if p['kat'] == "Dada" else "🍗" if p['kat'] == "Paha" else "🕊️"
+            
             with cols[idx % 2]:
                 if st.button(f"{icon} {p['label']}", key=f"btn_{p['label']}", use_container_width=True):
+                    # Simpan urutan klik (1, 2, 3... 12)
                     st.session_state.assigned_ranks[p['label']] = st.session_state.click_counter
                     st.session_state.click_counter += 1
                     st.rerun()
     else:
         st.title("Konfirmasi Data")
-        st.success("Seluruh paket telah berhasil diurutkan berdasarkan preferensi Kamu.")
+        st.success("Seluruh paket telah berhasil diurutkan berdasarkan preferensi Kamu (1 = Paling Disukai).")
         
         summary = []
-        for i, p in enumerate(st.session_state.profiles):
-            click_order = st.session_state.assigned_ranks[p['label']]
+        # Menampilkan summary berdasarkan urutan yang diklik user
+        sorted_summary = sorted(st.session_state.assigned_ranks.items(), key=lambda x: x[1])
+        
+        for rank, (label, click_idx) in enumerate(sorted_summary, 1):
             summary.append({
-                "Profil": f"Profil_{i+1}",
-                "Atribut Menu": p['label'],
-                "Skor Terbobot": 28 - click_order
+                "Peringkat": f"Ke-{rank}",
+                "Kombinasi Menu": label
             })
         
-        st.dataframe(pd.DataFrame(summary), use_container_width=True)
+        st.table(pd.DataFrame(summary))
 
         if st.button("Kirim Data ke Database Pusat", use_container_width=True, type="primary"):
             with st.spinner("Sedang memproses pengiriman data..."):
